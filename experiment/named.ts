@@ -7,9 +7,9 @@ server.listen(port, host, () => {
   console.log('DNS server started on port', port)
 })
 server.on('query', (query: any) => {
-  let domain = query.name()
+  const domain = query.name()
   console.log('DNS Query:', domain)
-  let target = new named.SOARecord(domain, {serial: Date.now()})
+  const target = new named.SOARecord(domain, {serial: Date.now()})
   query.addAnswer(domain, target, ttl)
   server.send(query)
 })

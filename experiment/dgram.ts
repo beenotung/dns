@@ -1,9 +1,9 @@
 import * as dgram from "dgram";
 
-let port = 8053
-let socket = dgram.createSocket({
+const port = 8053
+const socket = dgram.createSocket({
   type: "udp4",
-  reuseAddr:true,
+  reuseAddr: true,
 }, (msg, rinfo) => {
   console.log({msg, rinfo})
 })

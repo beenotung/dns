@@ -1,9 +1,8 @@
 import * as net from "net";
-import * as dgram from "dgram";
 
-let port = 8053
+const port = 8053
 
-let server = net.createServer()
+const server = net.createServer()
 server.on("connection", socket => {
   console.log('connection')
 })
@@ -13,4 +12,4 @@ server.on('listening', () => {
 server.on("error", err => {
   console.log('error', err)
 })
-server.listen(port, '0.0.0.0',)
+server.listen(port, '0.0.0.0')
