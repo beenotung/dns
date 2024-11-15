@@ -2,14 +2,20 @@ import { print } from 'listening-on'
 import { createSocket, RemoteInfo } from 'dgram'
 import dnsPacket from 'dns-packet'
 import { env } from './env'
+import { appendFileSync } from 'fs'
 
 let socket = createSocket('udp4')
 
 // id -> rinfo
 let pending: Record<number, { rinfo: RemoteInfo }> = {}
 
-function onQuery(domain: string): 'pass' | 'block' {
-  return 'pass'
+const blocked = 0
+const forward = 1
+
+function onQuery(domain: string): typeof blocked | typeof forward {
+  let now = new Date().toISOString()
+  appendFileSync('queries.log', `${now} ${domain}\n`)
+  return forward
 }
 
 socket.on('message', (msg, rinfo) => {
@@ -23,7 +29,7 @@ socket.on('message', (msg, rinfo) => {
   ) {
     let question = packet.questions[0]
     let result = onQuery(question.name)
-    if (result === 'block') {
+    if (result === blocked) {
       console.log('blocked query:', question)
       return
     }
