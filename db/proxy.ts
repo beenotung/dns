@@ -105,6 +105,14 @@ export type DnsRequest = {
   timestamp: number
 }
 
+export type DnsRequestType = {
+  id?: null | number
+  type: string
+  count: number
+  last_seen: number
+  forward: null | boolean
+}
+
 export type Setting = {
   id?: null | number
   default_state: null | ('forward' | 'block')
@@ -124,6 +132,7 @@ export type DBProxy = {
   verification_code: VerificationCode[]
   domain: Domain[]
   dns_request: DnsRequest[]
+  dns_request_type: DnsRequestType[]
   setting: Setting[]
 }
 
@@ -161,6 +170,7 @@ export let proxy = proxySchema<DBProxy>({
       /* foreign references */
       ['domain', { field: 'domain_id', table: 'domain' }],
     ],
+    dns_request_type: [],
     setting: [],
   },
 })

@@ -1,3 +1,4 @@
+import DnsQueryType from './pages/dns-query-type.js'
 import { capitalize } from '@beenotung/tslib/string.js'
 import { Router } from 'url-router.ts'
 import { LayoutType, config, title } from '../config.js'
@@ -71,6 +72,7 @@ export type Routes = Record<string, PageRoute>
 
 // TODO direct support alternative urls instead of having to repeat the entry
 let routeDict = {
+  ...DnsQueryType.routes,
   ...Home.routes,
   ...DemoToast.routes,
   ...UILanguage.routes,

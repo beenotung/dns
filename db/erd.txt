@@ -116,10 +116,19 @@ state enum('forward','block') NULL
 
 
 dns_request
--------
+-----------
 id integer PK
 domain_id integer FK >0- domain.id
 timestamp integer
+
+
+dns_request_type
+----------------
+id integer PK
+type text unique
+count integer
+last_seen integer
+forward boolean NULL
 
 
 setting
@@ -127,8 +136,9 @@ setting
 id integer PK
 default_state enum('forward','block') NULL
 
+
 # zoom: 1.000
-# view: (0, 0)
+# view: (321, 252)
 # text-bg: #6495ed
 # text-color: #000000
 # diagram-bg: #f5f5f5
@@ -146,3 +156,7 @@ default_state enum('forward','block') NULL
 # user (450, 680)
 # verification_code (50, 550)
 # verification_attempt (50, 372)
+# domain (1218, 712)
+# dns_request (934, 733)
+# dns_request_type (1286, 889)
+# setting (918, 939)

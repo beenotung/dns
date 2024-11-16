@@ -5,6 +5,7 @@ import { Routes } from '../routes.js'
 import { title } from '../../config.js'
 import Style from '../components/style.js'
 import { Locale, isPreferZh } from '../components/locale.js'
+import { Link } from '../components/router.js'
 
 // Calling <Component/> will transform the JSX into AST for each rendering.
 // You can reuse a pre-compute AST like `let component = <Component/>`.
@@ -23,42 +24,16 @@ let content = (
 
     <p>
       <Locale
-        en="You can get started by replacing the contents in this page."
-        zh="你可以從修改此頁的內容開始。"
+        en="A DNS proxy server that logs and filters domain names before forwarding them to an upstream DNS server."
+        zh="一個 DNS 代理伺服器，會記錄和過濾請求的網域名稱，然後再轉發給上游 DNS 伺服器。"
       />
     </p>
 
     <p>
-      <Locale
-        en={
-          <>
-            When the browser loads this URL, the server responds with complete
-            HTML content to the GET request. This allows the browser to perform
-            meaningful paint as soon as possible, which is ideal for SEO.
-          </>
-        }
-        zh={
-          <>
-            當瀏覽器載入此網址時，伺服器會回應完整的 HTML 內容給 GET
-            請求，讓瀏覽器能夠盡快完成有意義的頁面渲染 (meaningful paint)，這對
-            SEO（搜尋引擎優化）是非常理想的。
-          </>
-        }
-      />
-    </p>
-
-    <p>
-      <Locale
-        en="Try some reactive demos:"
-        zh="試試一些反應式 (reactive) 範例:"
-      />{' '}
-      <a href="https://liveviews.cc/thermostat" target="_blank">
-        <Locale en="Thermostat" zh="溫控器" />
-      </a>
-      ,{' '}
-      <a href="https://liveviews.cc/form" target="_blank">
-        <Locale en="Form Demo" zh="表單範例" />
-      </a>
+      <Locale en="Check recent logs: " zh="檢查最近請求的紀錄: " />
+      <Link href="/dns-query-type">
+        <Locale en="DNS Query Type" zh="DNS 查詢類型" />
+      </Link>
     </p>
 
     <SourceCode page="home.tsx" />

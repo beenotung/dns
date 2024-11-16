@@ -4,12 +4,32 @@ import dnsPacket from 'dns-packet'
 import { env } from '../env.js'
 import { blocked } from './filter.js'
 import { filterDomain } from './filter.js'
+import { isForwardingType } from './type.js'
 
 let udp4_socket = createSocket('udp4')
 let udp6_socket = createSocket('udp6')
 
 // id -> rinfo
 let pending: Record<number, RemoteInfo> = {}
+
+function forwardQuery(
+  socket: Socket,
+  msg: Buffer,
+  rinfo: RemoteInfo,
+  id: number,
+  question: dnsPacket.Question,
+) {
+  pending[id] = rinfo
+  socket.send(msg, 53, env.UPSTREAM_UDP_HOST, (error, bytes) => {
+    if (error) {
+      console.log('failed to forward udp query:', { question, error })
+      delete pending[id]
+    } else {
+      console.log('forwarded udp query:', question)
+      // console.log(msg.toString('base64url'))
+    }
+  })
+}
 
 function onMessage(socket: Socket, msg: Buffer, rinfo: RemoteInfo) {
   let packet = dnsPacket.decode(msg)
@@ -18,7 +38,7 @@ function onMessage(socket: Socket, msg: Buffer, rinfo: RemoteInfo) {
     packet.id &&
     packet.type === 'query' &&
     packet.questions?.length === 1 &&
-    packet.questions[0].type === 'A'
+    isForwardingType(packet.questions[0].type)
   ) {
     let question = packet.questions[0]
     let result = filterDomain(question.name)
@@ -26,16 +46,7 @@ function onMessage(socket: Socket, msg: Buffer, rinfo: RemoteInfo) {
       console.log('blocked udp query:', question)
       return
     }
-    pending[packet.id] = rinfo
-    socket.send(msg, 53, env.UPSTREAM_UDP_HOST, (error, bytes) => {
-      if (error) {
-        console.log('failed to forward udp query:', { question, error })
-        delete pending[packet.id!]
-      } else {
-        console.log('forwarded udp query:', question)
-        // console.log(msg.toString('base64url'))
-      }
-    })
+    forwardQuery(socket, msg, rinfo, packet.id, question)
     return
   }
   if (packet.id && packet.type === 'response' && packet.id in pending) {
@@ -51,17 +62,12 @@ function onMessage(socket: Socket, msg: Buffer, rinfo: RemoteInfo) {
     return
   }
   console.log('unknown udp packet:', packet)
-  if (!packet.questions?.some(question => question.type === 'A')) {
-    console.log('non A-type query?', packet)
-    pending[packet.id!] = rinfo
-    socket.send(msg, 53, env.UPSTREAM_UDP_HOST, (error, bytes) => {
-      if (error) {
-        console.log('failed to forward udp packet:', { packet, error })
-        delete pending[packet.id!]
-      } else {
-        console.log('forwarded unknown udp packet:', packet)
-      }
-    })
+  if (
+    packet.id &&
+    !packet.questions?.some(question => isForwardingType(question.type))
+  ) {
+    console.log('non forwarding type query?', packet)
+    forwardQuery(socket, msg, rinfo, packet.id, packet.questions![0])
   } else {
     console.log('multiple questions udp packet?:', packet)
   }
