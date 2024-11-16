@@ -66,12 +66,6 @@ function Main(attrs: {}, context: Context) {
           </tr>
         ))}
       </table>
-      {user ? null : (
-        <p>
-          You can add dns query type after{' '}
-          <Link href="/register">register</Link>.
-        </p>
-      )}
     </>
   )
 }

@@ -1,3 +1,4 @@
+import DnsQueryDomain from './pages/dns-query-domain.js'
 import DnsQueryType from './pages/dns-query-type.js'
 import { capitalize } from '@beenotung/tslib/string.js'
 import { Router } from 'url-router.ts'
@@ -72,6 +73,7 @@ export type Routes = Record<string, PageRoute>
 
 // TODO direct support alternative urls instead of having to repeat the entry
 let routeDict = {
+  ...DnsQueryDomain.routes,
   ...DnsQueryType.routes,
   ...Home.routes,
   ...DemoToast.routes,
@@ -90,7 +92,7 @@ let routeDict = {
     },
   },
   ...Login.routes,
-  ...Register.routes,
+  // ...Register.routes,
   ...Profile.routes,
   ...VerificationCode.routes,
 } satisfies Routes

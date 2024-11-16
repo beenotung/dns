@@ -7,7 +7,7 @@ export const forward = 1
 
 type State = 'forward' | 'block'
 
-let default_state: State = proxy.setting[1].default_state || 'forward'
+export let default_state: State = proxy.setting[1].default_state || 'forward'
 
 export function filterDomain(
   domain_name: string,

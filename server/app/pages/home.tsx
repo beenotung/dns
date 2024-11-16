@@ -32,7 +32,11 @@ let content = (
     <p>
       <Locale en="Check recent logs: " zh="檢查最近請求的紀錄: " />
       <Link href="/dns-query-type">
-        <Locale en="DNS Query Type" zh="DNS 查詢類型" />
+        <Locale en="Query Types" zh="查詢類型" />
+      </Link>
+      {', '}
+      <Link href="/dns-query-domain">
+        <Locale en="Domains" zh="網域" />
       </Link>
     </p>
 

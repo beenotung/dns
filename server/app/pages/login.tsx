@@ -31,7 +31,6 @@ let LoginPage = (
   <div id="login">
     {style}
     <h1>Login to {config.short_site_name}</h1>
-    <p>{commonTemplatePageText}</p>
     <Main />
   </div>
 )
@@ -80,7 +79,8 @@ let verifyFormBody = (
 let passwordFormBody = (
   <>
     <label>
-      Username, email or phone number
+      {/* Username, email or phone number */}
+      Username
       <div class="input-container">
         <input name="loginId" autocomplete="username" />
       </div>
@@ -104,6 +104,7 @@ let passwordFormBody = (
 
 let guestView = (
   <>
+    {/*
     <div>Login with:</div>
     <form
       id="verifyForm"
@@ -114,6 +115,7 @@ let guestView = (
       {verifyFormBody}
     </form>
     <div class="or-line flex-center">or</div>
+    */}
     <form method="post" action="/login/submit">
       {passwordFormBody}
     </form>
