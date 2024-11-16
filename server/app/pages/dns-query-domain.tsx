@@ -2,6 +2,7 @@ import { o } from '../jsx/jsx.js'
 import { Routes } from '../routes.js'
 import { apiEndpointTitle, title } from '../../config.js'
 import Style from '../components/style.js'
+import { find } from 'better-sqlite3-proxy'
 import {
   Context,
   DynamicContext,
@@ -17,6 +18,7 @@ import { proxy } from '../../../db/proxy.js'
 import DateTimeText from '../components/datetime.js'
 import { db } from '../../../db/db.js'
 import { default_state } from '../../proxy/filter.js'
+import { Button } from '../components/button.js'
 
 let pageTitle = 'DNS Query Domain'
 let addPageTitle = 'Add DNS Query Domain'
@@ -47,23 +49,47 @@ let items = [
   { title: 'iOS', slug: 'ios' },
 ]
 
-let select_domain = db.prepare<
-  void[],
-  {
-    domain: string
-    state: null | 'forward' | 'block'
-    last_seen: number
-  }
->(/* sql */ `
+type Row = {
+  domain: string
+  state: null | 'forward' | 'block'
+  last_seen: number
+  count: number
+}
+let select_domain = db.prepare<void[], Row>(/* sql */ `
 select
   domain.domain
 , domain.state
 , max(dns_request.timestamp) as last_seen
+, count(dns_request.id) as count
 from dns_request
 inner join domain on dns_request.domain_id = domain.id
 group by domain.id
 order by last_seen desc
 `)
+
+function RowItem(row: Row) {
+  let state = row.state || default_state
+  return (
+    <tr data-id={row.domain}>
+      <td>
+        {state === 'block' ? (
+          <Button url={`/unblock/${row.domain}`}>unblock</Button>
+        ) : (
+          <Button url={`/block/${row.domain}`}>block</Button>
+        )}
+      </td>
+      <td>
+        {state}
+        {row.state ? null : ' (default)'}
+      </td>
+      <td>{row.domain}</td>
+      <td>{row.count}</td>
+      <td>
+        <DateTimeText time={row.last_seen} />
+      </td>
+    </tr>
+  )
+}
 
 function Main(attrs: {}, context: Context) {
   let user = getAuthUser(context)
@@ -85,26 +111,13 @@ function Main(attrs: {}, context: Context) {
         <thead>
           <tr>
             <th>Control</th>
-            <th>Domain</th>
             <th>State</th>
+            <th>Domain</th>
+            <th>Count</th>
             <th>Last Seen</th>
           </tr>
         </thead>
-        {mapArray(rows, row => {
-          return (
-            <tr>
-              <td>
-                <button>block</button>
-                <button>forward</button>
-              </td>
-              <td>{row.domain}</td>
-              <td>{row.state || default_state + ' (default)'}</td>
-              <td>
-                <DateTimeText time={row.last_seen} />
-              </td>
-            </tr>
-          )
-        })}
+        {mapArray(rows, RowItem)}
       </table>
     </>
   )
@@ -218,12 +231,45 @@ function SubmitResult(attrs: {}, context: DynamicContext) {
   )
 }
 
+function Block(attrs: {}, context: DynamicContext) {
+  updateDomainState(context, 'block')
+  return page
+}
+
+function Unblock(attrs: {}, context: DynamicContext) {
+  updateDomainState(context, 'forward')
+  return page
+}
+
+function updateDomainState(
+  context: DynamicContext,
+  state: 'forward' | 'block',
+) {
+  let user = getAuthUser(context)
+  if (!user) throw 'You must be logged in to block a domain'
+  if (!user.is_admin) throw 'Only admin is allowed to block a domain'
+  let domain = context.routerMatch?.params.domain
+  let row = find(proxy.domain, { domain })
+  if (!row) throw 'Domain not found'
+  row.state = state
+}
+
 let routes = {
   '/dns-query-domain': {
     title: title(pageTitle),
     description: 'TODO',
     menuText: pageTitle,
     node: page,
+  },
+  '/block/:domain': {
+    title: apiEndpointTitle,
+    description: 'block a domain',
+    node: <Block />,
+  },
+  '/unblock/:domain': {
+    title: apiEndpointTitle,
+    description: 'unblock a domain',
+    node: <Unblock />,
   },
   '/dns-query-domain/add': {
     title: title(addPageTitle),
