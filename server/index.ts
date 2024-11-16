@@ -67,7 +67,7 @@ app.use((error: HttpError, req: Request, res: Response, next: NextFunction) => {
   res.json({ error: String(error) })
 })
 
-const port = env.PORT
+const port = env.HTTP_PORT
 server.listen(port, () => {
   print(port)
   if (config.auto_open) {
