@@ -8,12 +8,14 @@ import { filterDomain } from './filter'
 let app = express()
 
 app.use((req, res, next) => {
-  console.log({
-    method: req.method,
-    url: req.url,
-    contentType: req.headers['content-type'],
-    accept: req.headers['accept'],
-  })
+  if (req.url !== '/dns-query') {
+    console.log({
+      method: req.method,
+      url: req.url,
+      contentType: req.headers['content-type'],
+      accept: req.headers['accept'],
+    })
+  }
   next()
 })
 
@@ -82,6 +84,6 @@ app.get('/', (req, res) => {
   res.end()
 })
 
-app.listen(env.PORT, () => {
-  print({ port: env.PORT, protocol: 'http' })
+app.listen(env.HTTP_PORT, () => {
+  print({ port: env.HTTP_PORT, protocol: 'http' })
 })

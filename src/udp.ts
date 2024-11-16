@@ -2,7 +2,6 @@ import { print } from 'listening-on'
 import { createSocket, RemoteInfo, Socket } from 'dgram'
 import dnsPacket from 'dns-packet'
 import { env } from './env'
-import { appendFileSync } from 'fs'
 import { blocked } from './filter'
 import { filterDomain } from './filter'
 
@@ -78,10 +77,10 @@ udp6_socket.on('message', (msg, rinfo) => {
   onMessage(udp6_socket, msg, rinfo)
 })
 
-udp4_socket.bind(env.PORT, '0.0.0.0', () => {
-  print({ port: env.PORT, protocol: 'udp4' })
+udp4_socket.bind(env.UDP_PORT, '0.0.0.0', () => {
+  print({ port: env.UDP_PORT, protocol: 'udp4' })
 })
 
-udp6_socket.bind(env.PORT, '::', () => {
-  print({ port: env.PORT, protocol: 'udp6' })
+udp6_socket.bind(env.UDP_PORT, '::', () => {
+  print({ port: env.UDP_PORT, protocol: 'udp6' })
 })
