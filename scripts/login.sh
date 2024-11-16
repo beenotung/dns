@@ -5,9 +5,9 @@ set -o pipefail
 
 source scripts/config
 
-ssh -t "$server" "
-  if [ -d $project_dir ]; then
-    cd $project_dir
+ssh -t "$user@$host" "
+  if [ -d $root_dir ]; then
+    cd $root_dir
   fi
   \$0 --login
 "

@@ -40,3 +40,11 @@ Maybe because I should run it in a separate TCP server (on different port than t
 ### Workaround for Android
 
 Use the app [Intra](https://play.google.com/store/apps/details?id=app.intra) to setup a local VPN, which forward the DNS requests to the DOH server.
+
+## Development
+
+The core files of DNS proxy is in [server/proxy](server/proxy) directory.
+
+The web UI is powered by [ts-liveview](https://github.com/beenotung/ts-liveview/blob/v5-auth-web-template/README.md)
+
+See [help.txt](help.txt) to get started.

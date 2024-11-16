@@ -1,0 +1,4 @@
+user=node
+host=dns.hkit.cc
+root_dir=/home/node/workspace/github.com/beenotung/dns
+pm2_name="dns"
