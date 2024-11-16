@@ -13,9 +13,14 @@ rsync -SavLP \
   $server:$project_dir/
 
 ssh $server "
+  set -e
   source ~/.nvm/nvm.sh
   set -x
   cd $project_dir
   pnpm install --prod
+  cd dist
+  npx knex migrate:latest
+  cd ..
+  node dist/src/seed.js
   pm2 reload dns
 "
