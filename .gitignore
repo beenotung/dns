@@ -34,3 +34,5 @@ uploads/
 # data files
 data/*.tmp.*
 data/*.sql
+udp-response.bin
+queries.log

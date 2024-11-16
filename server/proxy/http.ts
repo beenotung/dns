@@ -1,7 +1,7 @@
 import { Response, Router } from 'express'
 import dnsPacket from 'dns-packet'
 import { env } from '../env.js'
-import { blocked } from './filter.js'
+import { blocked, makeEmptyResponse } from './filter.js'
 import { filterDomain } from './filter.js'
 import { find } from 'better-sqlite3-proxy'
 import { proxy } from '../../db/proxy.js'
@@ -56,8 +56,12 @@ async function onHttpQuery(msg: Buffer, res: Response) {
     let question = packet.questions[0]
     let result = filterDomain(question.name)
     if (result === blocked) {
-      res.status(403)
-      res.end('blocked')
+      // res.status(403)
+      // res.end('blocked')
+      let response = makeEmptyResponse(packet)
+      res.header('Content-Type', 'application/dns-message')
+      res.write(dnsPacket.encode(response))
+      res.end()
       return
     }
     forwardQuery(msg, res, question)

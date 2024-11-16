@@ -2,7 +2,7 @@ import { print } from 'listening-on'
 import { createSocket, RemoteInfo, Socket } from 'dgram'
 import dnsPacket from 'dns-packet'
 import { env } from '../env.js'
-import { blocked } from './filter.js'
+import { blocked, makeEmptyResponse } from './filter.js'
 import { filterDomain } from './filter.js'
 import { isForwardingType } from './type.js'
 
@@ -44,6 +44,8 @@ function onMessage(socket: Socket, msg: Buffer, rinfo: RemoteInfo) {
     let result = filterDomain(question.name)
     if (result === blocked) {
       console.log('blocked udp query:', question)
+      let response = makeEmptyResponse(packet)
+      socket.send(dnsPacket.encode(response), rinfo.port, rinfo.address)
       return
     }
     forwardQuery(socket, msg, rinfo, packet.id, question)

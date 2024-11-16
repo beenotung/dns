@@ -1,6 +1,7 @@
 import { appendFileSync } from 'fs'
 import { proxy } from '../../db/proxy.js'
 import { find } from 'better-sqlite3-proxy'
+import { Packet } from 'dns-packet'
 
 export const blocked = 0
 export const forward = 1
@@ -34,4 +35,14 @@ export function filterDomain(
   })
 
   return state === 'block' ? blocked : forward
+}
+
+export function makeEmptyResponse(query: Packet) {
+  let response: Packet = {
+    id: query.id,
+    type: 'response',
+    questions: query.questions,
+    answers: [],
+  }
+  return response
 }
