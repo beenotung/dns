@@ -21,3 +21,22 @@ A DNS proxy that logs and filters domain names before forwarding them to an upst
 
 1. Display recent requested domain names
 2. Block/unblock domain names
+
+## Issues
+
+### What is tested and works
+
+- DNS over HTTPS (tested in Firefox)
+- DNS over UDP (tested with `dig` cli)
+
+### What is tested and doesn't work
+
+- DNS over TLS (tested in Android)
+
+Probably because I setup the nginx proxy incorrectly.
+
+Maybe because I should run it in a separate TCP server (on different port than the HTTP server).
+
+### Workaround for Android
+
+Use the app [Intra](https://play.google.com/store/apps/details?id=app.intra) to setup a local VPN, which forward the DNS requests to the DOH server.

@@ -4,8 +4,9 @@ import populateEnv from 'populate-env'
 config()
 
 export let env = {
-  PORT: 8080,
-  UPSTREAM_ADDRESS: '8.8.8.8',
+  PORT: 8053,
+  UPSTREAM_UDP_HOST: '8.8.8.8',
+  UPSTREAM_HTTPS_HOST: 'dns.google',
 }
 
 populateEnv(env, { mode: 'halt' })
