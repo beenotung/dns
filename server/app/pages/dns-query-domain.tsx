@@ -71,7 +71,10 @@ type Row = {
   last_seen: number
   count: number
 }
-let select_domain = db.prepare<void[], Row>(/* sql */ `
+let select_domain = db.prepare<
+  { state: 'all' | 'default' | 'block' | 'forward' },
+  Row
+>(/* sql */ `
 select
   domain.domain
 , domain.state
@@ -79,6 +82,9 @@ select
 , count(dns_request.id) as count
 from dns_request
 inner join domain on dns_request.domain_id = domain.id
+where domain.state = @state
+   or @state = 'all'
+   or (@state = 'default' and domain.state is null)
 group by domain.id
 order by last_seen desc
 `)
@@ -121,6 +127,7 @@ order by count desc
 
 function Stats() {
   let rows = select_stats.all()
+  let all_count = rows.reduce((a, b) => a + b.count, 0)
   return (
     <table>
       <thead>
@@ -130,6 +137,12 @@ function Stats() {
         </tr>
       </thead>
       <tbody>
+        <tr>
+          <td>
+            <Link href={`/dns-query-domain?state=all`}>all</Link>
+          </td>
+          <td>{all_count}</td>
+        </tr>
         {mapArray(rows, row => {
           let state = row.state || 'default'
           return (
@@ -146,7 +159,7 @@ function Stats() {
   )
 }
 
-function Main(attrs: {}, context: Context) {
+function Main(attrs: {}, context: DynamicContext) {
   let user = getAuthUser(context)
   if (!user) {
     return (
@@ -158,8 +171,11 @@ function Main(attrs: {}, context: Context) {
   if (!user.is_admin) {
     return <p>Only admin is allowed to view this page.</p>
   }
+  let params = new URLSearchParams(context.routerMatch?.search)
+  let state =
+    (params.get('state') as 'all' | 'default' | 'block' | 'forward') || 'all'
   let now = Date.now()
-  let rows = select_domain.all()
+  let rows = select_domain.all({ state })
   return (
     <>
       <Stats />
