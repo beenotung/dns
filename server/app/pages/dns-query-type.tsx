@@ -16,6 +16,7 @@ import { renderError } from '../components/error.js'
 import { getAuthUser } from '../auth/user.js'
 import { proxy } from '../../../db/proxy.js'
 import DateTimeText from '../components/datetime.js'
+import { LastSeen } from '../components/last-seen.js'
 
 let pageTitle = 'DNS Query Type'
 
@@ -44,6 +45,7 @@ function Main(attrs: {}, context: Context) {
   let user = getAuthUser(context)
   let items = unProxy(proxy.dns_request_type)
   items.sort((a, b) => b.last_seen - a.last_seen)
+  let now = Date.now()
   return (
     <>
       <table>
@@ -61,7 +63,7 @@ function Main(attrs: {}, context: Context) {
             <td>{item.forward ? 'Yes' : 'No'}</td>
             <td>{item.count}</td>
             <td>
-              <DateTimeText time={item.last_seen} />
+              <LastSeen time={item.last_seen} now={now} />
             </td>
           </tr>
         ))}

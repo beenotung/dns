@@ -14,11 +14,13 @@ import { object, string } from 'cast.ts'
 import { Link, Redirect } from '../components/router.js'
 import { renderError } from '../components/error.js'
 import { getAuthUser } from '../auth/user.js'
-import { proxy } from '../../../db/proxy.js'
+import { Domain, proxy } from '../../../db/proxy.js'
 import DateTimeText from '../components/datetime.js'
 import { db } from '../../../db/db.js'
 import { default_state } from '../../proxy/filter.js'
 import { Button } from '../components/button.js'
+import { HOUR } from '@beenotung/tslib/time.js'
+import { LastSeen } from '../components/last-seen.js'
 
 let pageTitle = 'DNS Query Domain'
 let addPageTitle = 'Add DNS Query Domain'
@@ -31,6 +33,12 @@ let style = Style(/* css */ `
 #DnsQueryDomain table td {
   border: 1px solid black;
   padding: 0.5rem;
+}
+#DnsQueryDomain table tr[data-state="block"] {
+  background-color: #ffdddd55;
+}
+#DnsQueryDomain table tr[data-state="forward"] {
+  background-color: #ddffdd55;
 }
 `)
 
@@ -67,10 +75,10 @@ group by domain.id
 order by last_seen desc
 `)
 
-function RowItem(row: Row) {
+function RowItem(row: Row, now: number) {
   let state = row.state || default_state
   return (
-    <tr data-id={row.domain}>
+    <tr data-id={row.domain} data-state={state}>
       <td>
         {state === 'block' ? (
           <Button url={`/unblock/${row.domain}`}>unblock</Button>
@@ -85,9 +93,48 @@ function RowItem(row: Row) {
       <td>{row.domain}</td>
       <td>{row.count}</td>
       <td>
-        <DateTimeText time={row.last_seen} />
+        <LastSeen time={row.last_seen} now={now} />
       </td>
     </tr>
+  )
+}
+
+let select_stats = db.prepare<
+  void[],
+  { state: Domain['state']; count: number }
+>(/* sql */ `
+select
+  state
+, count(id) as count
+from domain
+group by state
+order by count desc
+`)
+
+function Stats() {
+  let rows = select_stats.all()
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>State</th>
+          <th>Domain Count</th>
+        </tr>
+      </thead>
+      <tbody>
+        {mapArray(rows, row => {
+          let state = row.state || 'default'
+          return (
+            <tr>
+              <td>
+                <Link href={`/dns-query-domain?state=${state}`}>{state}</Link>
+              </td>
+              <td>{row.count}</td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
   )
 }
 
@@ -103,9 +150,11 @@ function Main(attrs: {}, context: Context) {
   if (!user.is_admin) {
     return <p>Only admin is allowed to view this page.</p>
   }
+  let now = Date.now()
   let rows = select_domain.all()
   return (
     <>
+      <Stats />
       <p>Remark: default state is "{default_state}".</p>
       <table>
         <thead>
@@ -117,7 +166,7 @@ function Main(attrs: {}, context: Context) {
             <th>Last Seen</th>
           </tr>
         </thead>
-        {mapArray(rows, RowItem)}
+        {mapArray(rows, row => RowItem(row, now))}
       </table>
     </>
   )
