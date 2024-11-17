@@ -93,11 +93,8 @@ let brand = (
       {config.site_name}
     </Link>{' '}
     <div class="text-no-wrap">
-      <a target="_blank" href="https://news.ycombinator.com/item?id=22830472">
-        HN
-      </a>{' '}
-      <a target="_blank" href="https://github.com/beenotung/ts-liveview">
-        git
+      <a target="_blank" href="https://github.com/beenotung/dns">
+        github
       </a>
     </div>
   </div>
