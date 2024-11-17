@@ -38,7 +38,15 @@ let style = Style(/* css */ `
   background-color: #ffdddd55;
 }
 #DnsQueryDomain table tr[data-state="forward"] {
-  background-color: #ddffdd55;
+  background-color: #ddffdd88;
+}
+#DnsQueryDomain table tr[data-state="default"] {
+  background-color: #ffffdd88;
+}
+#DnsQueryDomain table tr td .controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 `)
 
@@ -76,20 +84,20 @@ order by last_seen desc
 `)
 
 function RowItem(row: Row, now: number) {
-  let state = row.state || default_state
+  let state = row.state
   return (
-    <tr data-id={row.domain} data-state={state}>
+    <tr data-id={row.domain} data-state={state || 'default'}>
       <td>
-        {state === 'block' ? (
-          <Button url={`/unblock/${row.domain}`}>unblock</Button>
-        ) : (
-          <Button url={`/block/${row.domain}`}>block</Button>
-        )}
+        <div class="controls">
+          {state !== 'forward' ? (
+            <Button url={`/unblock/${row.domain}`}>unblock</Button>
+          ) : null}
+          {state !== 'block' ? (
+            <Button url={`/block/${row.domain}`}>block</Button>
+          ) : null}
+        </div>
       </td>
-      <td>
-        {state}
-        {row.state ? null : ' (default)'}
-      </td>
+      <td>{state || 'default'}</td>
       <td>{row.domain}</td>
       <td>{row.count}</td>
       <td>
