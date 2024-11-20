@@ -21,6 +21,8 @@ import { default_state } from '../../proxy/filter.js'
 import { Button } from '../components/button.js'
 import { HOUR } from '@beenotung/tslib/time.js'
 import { LastSeen } from '../components/last-seen.js'
+import { nodeToVNode } from '../jsx/vnode.js'
+import { MessageException } from '../../exception.js'
 
 let pageTitle = 'DNS Query Domain'
 let addPageTitle = 'Add DNS Query Domain'
@@ -66,6 +68,7 @@ let items = [
 ]
 
 type Row = {
+  id: number
   domain: string
   state: null | 'forward' | 'block'
   last_seen: number
@@ -76,7 +79,8 @@ let select_domain = db.prepare<
   Row
 >(/* sql */ `
 select
-  domain.domain
+  domain.id
+, domain.domain
 , domain.state
 , max(dns_request.timestamp) as last_seen
 , count(dns_request.id) as count
@@ -92,7 +96,7 @@ order by last_seen desc
 function RowItem(row: Row, now: number) {
   let state = row.state
   return (
-    <tr data-id={row.domain} data-state={state || 'default'}>
+    <tr data-id={row.id} data-state={state || 'default'}>
       <td>
         <div class="controls">
           {state !== 'forward' ? (
@@ -103,7 +107,7 @@ function RowItem(row: Row, now: number) {
           ) : null}
         </div>
       </td>
-      <td>{state || 'default'}</td>
+      <td data-field="state">{state || 'default'}</td>
       <td>{row.domain}</td>
       <td>{row.count}</td>
       <td>
@@ -305,19 +309,17 @@ function SubmitResult(attrs: {}, context: DynamicContext) {
 }
 
 function Block(attrs: {}, context: DynamicContext) {
-  updateDomainState(context, 'block')
-  return page
+  return updateDomainState(context, 'block')
 }
 
 function Unblock(attrs: {}, context: DynamicContext) {
-  updateDomainState(context, 'forward')
-  return page
+  return updateDomainState(context, 'forward')
 }
 
 function updateDomainState(
   context: DynamicContext,
   state: 'forward' | 'block',
-) {
+): never {
   let user = getAuthUser(context)
   if (!user) throw 'You must be logged in to block a domain'
   if (!user.is_admin) throw 'Only admin is allowed to block a domain'
@@ -325,6 +327,28 @@ function updateDomainState(
   let row = find(proxy.domain, { domain })
   if (!row) throw 'Domain not found'
   row.state = state
+  throw new MessageException([
+    'batch',
+    [
+      ['update-attrs', `[data-id="${row.id}"]`, { 'data-state': state }],
+      ['update-text', `[data-id="${row.id}"] [data-field="state"]`, state],
+      [
+        'update-in',
+        `[data-id="${row.id}"] .controls`,
+        nodeToVNode(
+          <>
+            {state !== 'forward' ? (
+              <Button url={`/unblock/${row.domain}`}>unblock</Button>
+            ) : null}
+            {state !== 'block' ? (
+              <Button url={`/block/${row.domain}`}>block</Button>
+            ) : null}
+          </>,
+          context,
+        ),
+      ],
+    ],
+  ])
 }
 
 let routes = {
