@@ -5,7 +5,7 @@ proxy.setting[1] ||= {
   default_state: 'forward',
 }
 
-let types = ['A', 'AAAA', 'UNKNOWN_65']
+let types = ['A', 'AAAA', 'UNKNOWN_65', 'TXT']
 for (let type of types) {
   let row = find(proxy.dns_request_type, { type })
   if (row && row.forward !== true) {

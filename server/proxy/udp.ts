@@ -4,7 +4,7 @@ import dnsPacket from 'dns-packet'
 import { env } from '../env.js'
 import { blocked, makeEmptyResponse } from './filter.js'
 import { filterDomain } from './filter.js'
-import { isForwardingType } from './type.js'
+import { isForwardingType, logQuestionType } from './type.js'
 
 let udp4_socket = createSocket('udp4')
 let udp6_socket = createSocket('udp6')
@@ -34,6 +34,7 @@ function forwardQuery(
 function onMessage(socket: Socket, msg: Buffer, rinfo: RemoteInfo) {
   let packet = dnsPacket.decode(msg)
   // console.log('packet:', packet)
+  logQuestionType(packet.questions)
   if (
     packet.id &&
     packet.type === 'query' &&

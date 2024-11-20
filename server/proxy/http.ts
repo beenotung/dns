@@ -5,7 +5,7 @@ import { blocked, makeEmptyResponse } from './filter.js'
 import { filterDomain } from './filter.js'
 import { find } from 'better-sqlite3-proxy'
 import { proxy } from '../../db/proxy.js'
-import { isForwardingType } from './type.js'
+import { isForwardingType, logQuestionType } from './type.js'
 
 let app = Router()
 
@@ -33,21 +33,7 @@ async function forwardQuery(
 
 async function onHttpQuery(msg: Buffer, res: Response) {
   let packet = dnsPacket.decode(msg)
-  for (let question of packet.questions ?? []) {
-    let type = question.type
-    let row = find(proxy.dns_request_type, { type })
-    if (row) {
-      row.count++
-      row.last_seen = Date.now()
-    } else {
-      proxy.dns_request_type.push({
-        type,
-        count: 1,
-        last_seen: Date.now(),
-        forward: isForwardingType(type),
-      })
-    }
-  }
+  logQuestionType(packet.questions)
   if (
     packet.type === 'query' &&
     packet.questions?.length === 1 &&
