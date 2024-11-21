@@ -19,13 +19,15 @@ import DateTimeText from '../components/datetime.js'
 import { db } from '../../../db/db.js'
 import { default_state, filterByPattern } from '../../proxy/filter.js'
 import { Button } from '../components/button.js'
-import { HOUR } from '@beenotung/tslib/time.js'
+import { DAY, HOUR } from '@beenotung/tslib/time.js'
 import { LastSeen } from '../components/last-seen.js'
 import { nodeToVNode } from '../jsx/vnode.js'
 import { MessageException } from '../../exception.js'
 
 let pageTitle = 'DNS Query Domain'
 let addPageTitle = 'Add DNS Query Domain'
+
+let cutoff_interval = 1 * DAY
 
 let style = Style(/* css */ `
 #DnsQueryDomain table {
@@ -78,7 +80,10 @@ type DomainRow = {
   count: number
 }
 let select_domain = db.prepare<
-  { state: 'all' | 'default' | 'block' | 'forward' },
+  {
+    state: 'all' | 'default' | 'block' | 'forward'
+    last_seen_cutoff: number
+  },
   DomainRow
 >(/* sql */ `
 select
@@ -88,9 +93,11 @@ select
 , last_seen
 , count
 from domain
-where state = @state
-   or @state = 'all'
-   or (@state = 'default' and state is null)
+where last_seen >= :last_seen_cutoff
+  and ( state = @state
+     or @state = 'all'
+     or (@state = 'default' and state is null)
+  )
 order by last_seen desc
 `)
 
@@ -402,7 +409,9 @@ function Main(attrs: {}, context: DynamicContext) {
 
   params.set('view', view)
 
-  let rows = select_domain.all({ state })
+  let now = Date.now()
+  let last_seen_cutoff = now - cutoff_interval
+  let rows = select_domain.all({ state, last_seen_cutoff })
   return (
     <>
       <Stats params={params} state={state} />
