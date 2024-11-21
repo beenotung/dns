@@ -92,6 +92,12 @@ export type VerificationCode = {
   user?: User
 }
 
+export type Pattern = {
+  id?: null | number
+  pattern: string
+  state: null | ('forward' | 'block')
+}
+
 export type Domain = {
   id?: null | number
   domain: string
@@ -130,6 +136,7 @@ export type DBProxy = {
   request_log: RequestLog[]
   verification_attempt: VerificationAttempt[]
   verification_code: VerificationCode[]
+  pattern: Pattern[]
   domain: Domain[]
   dns_request: DnsRequest[]
   dns_request_type: DnsRequestType[]
@@ -165,6 +172,7 @@ export let proxy = proxySchema<DBProxy>({
       ['match', { field: 'match_id', table: 'verification_attempt' }],
       ['user', { field: 'user_id', table: 'user' }],
     ],
+    pattern: [],
     domain: [],
     dns_request: [
       /* foreign references */

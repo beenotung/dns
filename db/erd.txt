@@ -108,6 +108,13 @@ email varchar(320) NULL
 tel varchar(16) NULL
 
 
+pattern
+-------
+id integer PK
+pattern text unique
+state enum('forward','block') NULL
+
+
 domain
 ------
 id integer PK
@@ -156,6 +163,7 @@ default_state enum('forward','block') NULL
 # user (450, 680)
 # verification_code (50, 550)
 # verification_attempt (50, 372)
+# pattern (310, -578)
 # domain (1218, 712)
 # dns_request (934, 733)
 # dns_request_type (1286, 889)

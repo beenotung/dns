@@ -2,7 +2,7 @@ import { o } from '../jsx/jsx.js'
 import { Routes } from '../routes.js'
 import { apiEndpointTitle, title } from '../../config.js'
 import Style from '../components/style.js'
-import { find } from 'better-sqlite3-proxy'
+import { find, seedRow } from 'better-sqlite3-proxy'
 import {
   Context,
   DynamicContext,
@@ -17,7 +17,7 @@ import { getAuthUser } from '../auth/user.js'
 import { Domain, proxy } from '../../../db/proxy.js'
 import DateTimeText from '../components/datetime.js'
 import { db } from '../../../db/db.js'
-import { default_state } from '../../proxy/filter.js'
+import { default_state, filterByPattern } from '../../proxy/filter.js'
 import { Button } from '../components/button.js'
 import { HOUR } from '@beenotung/tslib/time.js'
 import { LastSeen } from '../components/last-seen.js'
@@ -35,6 +35,7 @@ let style = Style(/* css */ `
 #DnsQueryDomain table td {
   border: 1px solid black;
   padding: 0.5rem;
+  vertical-align: top;
 }
 #DnsQueryDomain table tr[data-state="block"] {
   background-color: #ffdddd55;
@@ -49,6 +50,13 @@ let style = Style(/* css */ `
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+#DnsQueryDomain table ul {
+  margin: 0.5rem 0;
+  padding-inline-start: 1.5rem;
+}
+#DnsQueryDomain a.selected {
+  font-weight: bold;
 }
 `)
 
@@ -67,7 +75,7 @@ let items = [
   { title: 'iOS', slug: 'ios' },
 ]
 
-type Row = {
+type DomainRow = {
   id: number
   domain: string
   state: null | 'forward' | 'block'
@@ -76,7 +84,7 @@ type Row = {
 }
 let select_domain = db.prepare<
   { state: 'all' | 'default' | 'block' | 'forward' },
-  Row
+  DomainRow
 >(/* sql */ `
 select
   domain.id
@@ -93,10 +101,10 @@ group by domain.id
 order by last_seen desc
 `)
 
-function RowItem(row: Row, now: number) {
-  let state = row.state
+function DomainItem(row: DomainRow, now: number) {
+  let state = row.state || filterByPattern(row.domain)
   return (
-    <tr data-id={row.id} data-state={state || 'default'}>
+    <tr data-id={row.id} data-state={state}>
       <td>
         <div class="controls">
           {state !== 'forward' ? (
@@ -107,8 +115,49 @@ function RowItem(row: Row, now: number) {
           ) : null}
         </div>
       </td>
-      <td data-field="state">{state || 'default'}</td>
+      <td data-field="state">
+        {row.state || `default (${filterByPattern(row.domain)})`}
+      </td>
       <td>{row.domain}</td>
+      <td>{row.count}</td>
+      <td>
+        <LastSeen time={row.last_seen} now={now} />
+      </td>
+    </tr>
+  )
+}
+
+function PatternItem(row: PatternItem, now: number) {
+  let state = row.state
+  return (
+    <tr data-id={row.id} data-state={state || 'default'}>
+      <td>
+        <div class="controls">
+          {state !== 'forward' ? (
+            <Button url={`/unblock/${row.pattern}`}>unblock</Button>
+          ) : null}
+          {state !== 'block' ? (
+            <Button url={`/block/${row.pattern}`}>block</Button>
+          ) : null}
+        </div>
+      </td>
+      <td data-field="state">{state || 'default'}</td>
+      <td>
+        <details>
+          <summary>
+            {row.pattern} ({row.domains.length})
+          </summary>
+          <ul>
+            {mapArray(row.domains, row => (
+              <li>
+                {row.domain}
+                <br />
+                {row.count} | <LastSeen time={row.last_seen} now={now} />
+              </li>
+            ))}
+          </ul>
+        </details>
+      </td>
       <td>{row.count}</td>
       <td>
         <LastSeen time={row.last_seen} now={now} />
@@ -129,9 +178,16 @@ group by state
 order by count desc
 `)
 
-function Stats() {
+type ViewState = 'all' | 'default' | 'block' | 'forward'
+
+function Stats(attrs: { params: URLSearchParams; state: ViewState }) {
+  let { params } = attrs
   let rows = select_stats.all()
   let all_count = rows.reduce((a, b) => a + b.count, 0)
+
+  params.set('state', 'all')
+  let all_link = `/dns-query-domain?${params}`
+
   return (
     <table>
       <thead>
@@ -143,16 +199,23 @@ function Stats() {
       <tbody>
         <tr>
           <td>
-            <Link href={`/dns-query-domain?state=all`}>all</Link>
+            <Link href={all_link}>all</Link>
           </td>
           <td>{all_count}</td>
         </tr>
         {mapArray(rows, row => {
           let state = row.state || 'default'
+          params.set('state', state)
+          let state_link = `/dns-query-domain?${params}`
           return (
             <tr>
               <td>
-                <Link href={`/dns-query-domain?state=${state}`}>{state}</Link>
+                <Link
+                  href={state_link}
+                  class={state == attrs.state ? 'selected' : undefined}
+                >
+                  {state}
+                </Link>
               </td>
               <td>{row.count}</td>
             </tr>
@@ -160,6 +223,118 @@ function Stats() {
         })}
       </tbody>
     </table>
+  )
+}
+
+type PatternRow = {
+  id: number
+  pattern: string
+  state: Domain['state']
+}
+let select_pattern = db.prepare<void[], PatternRow>(/* sql */ `
+select
+  id
+, pattern
+, state
+from pattern
+`)
+
+type PatternItem = {
+  id: number
+  pattern: string
+  domains: DomainRow[]
+  state: null | 'forward' | 'block'
+  last_seen: number
+  count: number
+}
+
+function Patterns(attrs: { rows: DomainRow[] }) {
+  // pattern -> PatternItem
+  let patternItems: Record<string, PatternItem> = {}
+
+  // pattern -> PatternRow
+  let patternRows = Object.fromEntries(
+    select_pattern.all().map(row => [row.pattern, row]),
+  )
+
+  function addPattern(pattern: string, domain: DomainRow) {
+    let item = patternItems[pattern]
+    if (!item) {
+      let row = patternRows[pattern]
+      if (!row) {
+        let id =
+          find(proxy.pattern, { pattern })?.id ||
+          proxy.pattern.push({ pattern, state: null })
+        row = { id, pattern, state: null }
+        patternRows[pattern] = row
+      }
+      item = {
+        id: row.id,
+        pattern,
+        domains: [domain],
+        state: row.state,
+        last_seen: domain.last_seen,
+        count: domain.count,
+      }
+      patternItems[pattern] = item
+    } else {
+      item.domains.push(domain)
+      item.last_seen = Math.max(item.last_seen, domain.last_seen)
+      item.count += domain.count
+    }
+  }
+
+  for (let row of attrs.rows) {
+    let domain = row.domain
+    let parts = domain.split('.')
+    addPattern(parts[0] + '.*', row)
+    for (let i = 1; i < parts.length - 1; i++) {
+      addPattern('*.' + parts.slice(i).join('.'), row)
+    }
+  }
+
+  let items = Object.values(patternItems).sort((a, b) => {
+    let res = b.last_seen - a.last_seen
+    if (res == 0) res = b.count - a.count
+    return res
+  })
+  let now = Date.now()
+
+  return (
+    <>
+      <table>
+        <thead>
+          <tr>
+            <th>Control</th>
+            <th>State</th>
+            <th>Pattern</th>
+            <th>Count</th>
+            <th>Last Seen</th>
+          </tr>
+        </thead>
+        <tbody>{mapArray(items, row => PatternItem(row, now))}</tbody>
+      </table>
+    </>
+  )
+}
+
+function Domains(attrs: { rows: DomainRow[] }) {
+  let now = Date.now()
+  return (
+    <>
+      <table>
+        <thead>
+          <tr>
+            <th>Control</th>
+            <th>State</th>
+            <th>Domain</th>
+            <th>Count</th>
+            <th>Last Seen</th>
+          </tr>
+        </thead>
+        {mapArray(attrs.rows, row => DomainItem(row, now))}
+      </table>
+    </>
   )
 }
 
@@ -176,26 +351,40 @@ function Main(attrs: {}, context: DynamicContext) {
     return <p>Only admin is allowed to view this page.</p>
   }
   let params = new URLSearchParams(context.routerMatch?.search)
-  let state =
-    (params.get('state') as 'all' | 'default' | 'block' | 'forward') || 'all'
-  let now = Date.now()
+
+  let state = (params.get('state') as ViewState) || 'all'
+
+  let view = (params.get('view') as 'domain' | 'pattern') || 'domain'
+
+  params.set('view', 'domain')
+  let view_domain_link = `/dns-query-domain?${params}`
+
+  params.set('view', 'pattern')
+  let view_pattern_link = `/dns-query-domain?${params}`
+
+  params.set('view', view)
+
   let rows = select_domain.all({ state })
   return (
     <>
-      <Stats />
+      <Stats params={params} state={state} />
       <p>Remark: default state is "{default_state}".</p>
-      <table>
-        <thead>
-          <tr>
-            <th>Control</th>
-            <th>State</th>
-            <th>Domain</th>
-            <th>Count</th>
-            <th>Last Seen</th>
-          </tr>
-        </thead>
-        {mapArray(rows, row => RowItem(row, now))}
-      </table>
+      <p>
+        <Link
+          href={view_domain_link}
+          class={view == 'domain' ? 'selected' : undefined}
+        >
+          domains
+        </Link>
+        {' | '}
+        <Link
+          href={view_pattern_link}
+          class={view == 'pattern' ? 'selected' : undefined}
+        >
+          patterns
+        </Link>
+      </p>
+      {view === 'domain' ? <Domains rows={rows} /> : <Patterns rows={rows} />}
     </>
   )
 }
@@ -324,8 +513,17 @@ function updateDomainState(
   if (!user) throw 'You must be logged in to block a domain'
   if (!user.is_admin) throw 'Only admin is allowed to block a domain'
   let domain = context.routerMatch?.params.domain
-  let row = find(proxy.domain, { domain })
-  if (!row) throw 'Domain not found'
+  if (!domain) throw 'no domain specified'
+  let row = getRow()
+  function getRow() {
+    if (!domain.includes('*')) {
+      let id = seedRow(proxy.domain, { domain })
+      return proxy.domain[id]
+    } else {
+      let id = seedRow(proxy.pattern, { pattern: domain })
+      return proxy.pattern[id]
+    }
+  }
   row.state = state
   throw new MessageException([
     'batch',
@@ -338,10 +536,10 @@ function updateDomainState(
         nodeToVNode(
           <>
             {state !== 'forward' ? (
-              <Button url={`/unblock/${row.domain}`}>unblock</Button>
+              <Button url={`/unblock/${domain}`}>unblock</Button>
             ) : null}
             {state !== 'block' ? (
-              <Button url={`/block/${row.domain}`}>block</Button>
+              <Button url={`/block/${domain}`}>block</Button>
             ) : null}
           </>,
           context,
