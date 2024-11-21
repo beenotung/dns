@@ -31,14 +31,14 @@ async function forwardQuery(
 
 async function onHttpQuery(msg: Buffer, res: Response) {
   let packet = dnsPacket.decode(msg)
-  logQuestionType(packet.questions)
+  let type_id = logQuestionType(packet.questions)
   if (
     packet.type === 'query' &&
     packet.questions?.length === 1 &&
     isForwardingType(packet.questions[0].type)
   ) {
     let question = packet.questions[0]
-    let result = filterDomain(question.name)
+    let result = filterDomain(question, type_id!)
     if (result === blocked) {
       // res.status(403)
       // res.end('blocked')

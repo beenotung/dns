@@ -12,14 +12,16 @@ export function isForwardingType(type: string): boolean {
 
 export function logQuestionType(questions: Question[] | undefined) {
   if (!questions) return
+  let type_id: number | undefined
   for (let question of questions) {
     let type = question.type
     let row = find(proxy.dns_request_type, { type })
     if (row) {
+      type_id = row.id!
       row.count++
       row.last_seen = Date.now()
     } else {
-      proxy.dns_request_type.push({
+      type_id = proxy.dns_request_type.push({
         type,
         count: 1,
         last_seen: Date.now(),
@@ -27,4 +29,5 @@ export function logQuestionType(questions: Question[] | undefined) {
       })
     }
   }
+  return type_id
 }

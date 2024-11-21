@@ -53,7 +53,7 @@ function onMessage(
 ) {
   let packet = dnsPacket.decode(msg)
   // console.log('packet:', packet)
-  logQuestionType(packet.questions)
+  let type_id = logQuestionType(packet.questions)
   if (
     packet.id &&
     packet.type === 'query' &&
@@ -61,7 +61,7 @@ function onMessage(
     isForwardingType(packet.questions[0].type)
   ) {
     let question = packet.questions[0]
-    let result = filterDomain(question.name)
+    let result = filterDomain(question, type_id!)
     if (result === blocked) {
       console.log('blocked udp query:', question)
       let response = makeEmptyResponse(packet)

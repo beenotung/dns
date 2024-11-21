@@ -101,14 +101,9 @@ export type Pattern = {
 export type Domain = {
   id?: null | number
   domain: string
+  count: null | number
+  last_seen: null | number
   state: null | ('forward' | 'block')
-}
-
-export type DnsRequest = {
-  id?: null | number
-  domain_id: number
-  domain?: Domain
-  timestamp: number
 }
 
 export type DnsRequestType = {
@@ -117,6 +112,15 @@ export type DnsRequestType = {
   count: number
   last_seen: number
   forward: null | boolean
+}
+
+export type DnsRequest = {
+  id?: null | number
+  domain_id: number
+  domain?: Domain
+  type_id: null | number
+  type?: DnsRequestType
+  timestamp: number
 }
 
 export type Setting = {
@@ -138,8 +142,8 @@ export type DBProxy = {
   verification_code: VerificationCode[]
   pattern: Pattern[]
   domain: Domain[]
-  dns_request: DnsRequest[]
   dns_request_type: DnsRequestType[]
+  dns_request: DnsRequest[]
   setting: Setting[]
 }
 
@@ -174,11 +178,12 @@ export let proxy = proxySchema<DBProxy>({
     ],
     pattern: [],
     domain: [],
+    dns_request_type: [],
     dns_request: [
       /* foreign references */
       ['domain', { field: 'domain_id', table: 'domain' }],
+      ['type', { field: 'type_id', table: 'dns_request_type' }],
     ],
-    dns_request_type: [],
     setting: [],
   },
 })

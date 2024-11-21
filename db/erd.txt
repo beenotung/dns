@@ -119,14 +119,9 @@ domain
 ------
 id integer PK
 domain text unique
+count integer NULL
+last_seen integer NULL
 state enum('forward','block') NULL
-
-
-dns_request
------------
-id integer PK
-domain_id integer FK >0- domain.id
-timestamp integer
 
 
 dns_request_type
@@ -136,6 +131,14 @@ type text unique
 count integer
 last_seen integer
 forward boolean NULL
+
+
+dns_request
+-----------
+id integer PK
+domain_id integer FK >0- domain.id
+type_id integer NULL FK >0- dns_request_type.id
+timestamp integer
 
 
 setting

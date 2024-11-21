@@ -1,7 +1,7 @@
 import { appendFileSync } from 'fs'
 import { Pattern, proxy } from '../../db/proxy.js'
 import { find } from 'better-sqlite3-proxy'
-import { Packet } from 'dns-packet'
+import { Packet, Question } from 'dns-packet'
 import { db } from '../../db/db.js'
 
 export const blocked = 0
@@ -12,27 +12,39 @@ type State = 'forward' | 'block'
 export let default_state: State = proxy.setting[1].default_state || 'forward'
 
 export function filterDomain(
-  domain_name: string,
+  question: Question,
+  type_id: number,
 ): typeof blocked | typeof forward {
   let now = Date.now()
 
   let timestamp = new Date().toISOString()
-  appendFileSync('queries.log', `${timestamp} ${domain_name}\n`)
+  appendFileSync(
+    'queries.log',
+    `${timestamp} ${question.type} ${question.name}\n`,
+  )
 
-  let domain = find(proxy.domain, { domain: domain_name })
+  let domain = find(proxy.domain, { domain: question.name })
   let state: State
   let domain_id: number
   if (domain) {
     domain_id = domain.id!
-    state = domain.state || filterByPattern(domain_name)
+    state = domain.state || filterByPattern(question.name)
+    domain.count!++
+    domain.last_seen = now
   } else {
-    domain_id = proxy.domain.push({ domain: domain_name, state: null })
-    state = filterByPattern(domain_name)
+    domain_id = proxy.domain.push({
+      domain: question.name,
+      state: null,
+      count: 1,
+      last_seen: now,
+    })
+    state = filterByPattern(question.name)
   }
 
   proxy.dns_request.push({
     domain_id,
     timestamp: now,
+    type_id,
   })
 
   return state === 'block' ? blocked : forward

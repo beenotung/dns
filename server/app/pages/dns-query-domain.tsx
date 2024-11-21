@@ -87,17 +87,15 @@ let select_domain = db.prepare<
   DomainRow
 >(/* sql */ `
 select
-  domain.id
-, domain.domain
-, domain.state
-, max(dns_request.timestamp) as last_seen
-, count(dns_request.id) as count
-from dns_request
-inner join domain on dns_request.domain_id = domain.id
-where domain.state = @state
+  id
+, domain
+, state
+, last_seen
+, count
+from domain
+where state = @state
    or @state = 'all'
-   or (@state = 'default' and domain.state is null)
-group by domain.id
+   or (@state = 'default' and state is null)
 order by last_seen desc
 `)
 
@@ -107,10 +105,10 @@ function DomainItem(row: DomainRow, now: number) {
     <tr data-id={row.id} data-state={state}>
       <td>
         <div class="controls">
-          {state !== 'forward' ? (
+          {row.state !== 'forward' ? (
             <Button url={`/unblock/${row.domain}`}>unblock</Button>
           ) : null}
-          {state !== 'block' ? (
+          {row.state !== 'block' ? (
             <Button url={`/block/${row.domain}`}>block</Button>
           ) : null}
         </div>
