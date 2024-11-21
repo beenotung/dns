@@ -168,25 +168,76 @@ function PatternItem(row: PatternItem, now: number) {
 
 let select_stats = db.prepare<
   void[],
-  { state: Domain['state']; count: number }
+  { state: NonNullable<Domain['state']>; count: number }
 >(/* sql */ `
 select
   state
 , count(id) as count
 from domain
+where state is not null
 group by state
-order by count desc
 `)
+
+let select_default_domain = db
+  .prepare<void[], string>(
+    /* sql */ `
+select domain
+from domain
+where state is null
+`,
+  )
+  .pluck()
 
 type ViewState = 'all' | 'default' | 'block' | 'forward'
 
 function Stats(attrs: { params: URLSearchParams; state: ViewState }) {
   let { params } = attrs
   let rows = select_stats.all()
-  let all_count = rows.reduce((a, b) => a + b.count, 0)
 
   params.set('state', 'all')
   let all_link = `/dns-query-domain?${params}`
+
+  let default_block_count = 0
+  let default_forward_count = 0
+  for (let domain of select_default_domain.all()) {
+    let state = filterByPattern(domain)
+    if (state === 'block') default_block_count++
+    else if (state === 'forward') default_forward_count++
+  }
+
+  let all_count =
+    rows.reduce((a, b) => a + b.count, 0) +
+    default_block_count +
+    default_forward_count
+
+  type Items = {
+    label: string
+    state: ViewState
+    count: number
+  }
+  let items: Items[] = [
+    {
+      label: 'all',
+      state: 'all',
+      count: all_count,
+    },
+    {
+      label: 'default (block)',
+      state: 'default',
+      count: default_block_count,
+    },
+    {
+      label: 'default (forward)',
+      state: 'default',
+      count: default_forward_count,
+    },
+    ...rows.map(row => ({
+      label: row.state,
+      state: row.state,
+      count: row.count,
+    })),
+  ]
+  items.sort((a, b) => b.count - a.count)
 
   return (
     <table>
@@ -197,14 +248,8 @@ function Stats(attrs: { params: URLSearchParams; state: ViewState }) {
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td>
-            <Link href={all_link}>all</Link>
-          </td>
-          <td>{all_count}</td>
-        </tr>
-        {mapArray(rows, row => {
-          let state = row.state || 'default'
+        {mapArray(items, row => {
+          let state = row.state
           params.set('state', state)
           let state_link = `/dns-query-domain?${params}`
           return (
@@ -214,7 +259,7 @@ function Stats(attrs: { params: URLSearchParams; state: ViewState }) {
                   href={state_link}
                   class={state == attrs.state ? 'selected' : undefined}
                 >
-                  {state}
+                  {row.label}
                 </Link>
               </td>
               <td>{row.count}</td>

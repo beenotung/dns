@@ -65,7 +65,7 @@ limit 1
   )
   .pluck()
 
-export function filterByPattern(domain: string) {
+export function filterByPattern(domain: string): State {
   return select_pattern.get({ domain }) || default_state
 }
 
