@@ -3,8 +3,6 @@ import dnsPacket from 'dns-packet'
 import { env } from '../env.js'
 import { blocked, makeEmptyResponse } from './filter.js'
 import { filterDomain } from './filter.js'
-import { find } from 'better-sqlite3-proxy'
-import { proxy } from '../../db/proxy.js'
 import { isForwardingType, logQuestionType } from './type.js'
 
 let app = Router()
