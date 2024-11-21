@@ -1,10 +1,11 @@
 import { print } from 'listening-on'
 import { createSocket, RemoteInfo, Socket } from 'dgram'
-import dnsPacket from 'dns-packet'
+import dnsPacket, { Packet } from 'dns-packet'
 import { env } from '../env.js'
 import { blocked, makeEmptyResponse } from './filter.js'
 import { filterDomain } from './filter.js'
 import { isForwardingType, logQuestionType } from './type.js'
+import { PacketCache } from './cache.js'
 
 let udp4_socket = createSocket('udp4')
 let udp6_socket = createSocket('udp6')
@@ -12,14 +13,26 @@ let udp6_socket = createSocket('udp6')
 // id -> rinfo
 let pending: Record<number, RemoteInfo> = {}
 
+let cache4 = new PacketCache()
+let cache6 = new PacketCache()
+
 function forwardQuery(
+  cache: PacketCache,
   socket: Socket,
   msg: Buffer,
   rinfo: RemoteInfo,
   id: number,
   question: dnsPacket.Question,
+  query: Packet,
 ) {
   pending[id] = rinfo
+  let entry = cache.get(question)
+  if (entry) {
+    entry.response.id = query.id
+    let msg = dnsPacket.encode(entry.response)
+    onMessage(cache, socket, msg, rinfo, 'cached')
+    return
+  }
   socket.send(msg, 53, env.UPSTREAM_UDP_HOST, (error, bytes) => {
     if (error) {
       console.log('failed to forward udp query:', { question, error })
@@ -31,7 +44,13 @@ function forwardQuery(
   })
 }
 
-function onMessage(socket: Socket, msg: Buffer, rinfo: RemoteInfo) {
+function onMessage(
+  cache: PacketCache,
+  socket: Socket,
+  msg: Buffer,
+  rinfo: RemoteInfo,
+  flag: 'cached' | 'fresh',
+) {
   let packet = dnsPacket.decode(msg)
   // console.log('packet:', packet)
   logQuestionType(packet.questions)
@@ -49,11 +68,12 @@ function onMessage(socket: Socket, msg: Buffer, rinfo: RemoteInfo) {
       socket.send(dnsPacket.encode(response), rinfo.port, rinfo.address)
       return
     }
-    forwardQuery(socket, msg, rinfo, packet.id, question)
+    forwardQuery(cache, socket, msg, rinfo, packet.id, question, packet)
     return
   }
   if (packet.id && packet.type === 'response' && packet.id in pending) {
     let rinfo = pending[packet.id]
+    cache.put(packet.questions![0], packet)
     socket.send(msg, rinfo.port, rinfo.address, (error, bytes) => {
       if (error) {
         console.log('failed to forward udp response:', { packet, error })
@@ -70,7 +90,15 @@ function onMessage(socket: Socket, msg: Buffer, rinfo: RemoteInfo) {
     !packet.questions?.some(question => isForwardingType(question.type))
   ) {
     console.log('non forwarding type query?', packet)
-    forwardQuery(socket, msg, rinfo, packet.id, packet.questions![0])
+    forwardQuery(
+      cache,
+      socket,
+      msg,
+      rinfo,
+      packet.id,
+      packet.questions![0],
+      packet,
+    )
   } else {
     console.log('multiple questions udp packet?:', packet)
   }
@@ -78,12 +106,12 @@ function onMessage(socket: Socket, msg: Buffer, rinfo: RemoteInfo) {
 
 udp4_socket.on('message', (msg, rinfo) => {
   console.log('udp4 message:', msg, rinfo)
-  onMessage(udp4_socket, msg, rinfo)
+  onMessage(cache4, udp4_socket, msg, rinfo, 'fresh')
 })
 
 udp6_socket.on('message', (msg, rinfo) => {
   console.log('udp6 message:', msg, rinfo)
-  onMessage(udp6_socket, msg, rinfo)
+  onMessage(cache6, udp6_socket, msg, rinfo, 'fresh')
 })
 
 udp4_socket.bind(env.UDP_PORT, '0.0.0.0', () => {
