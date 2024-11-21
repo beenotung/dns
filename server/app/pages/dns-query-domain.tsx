@@ -70,11 +70,6 @@ let page = (
   </>
 )
 
-let items = [
-  { title: 'Android', slug: 'md' },
-  { title: 'iOS', slug: 'ios' },
-]
-
 type DomainRow = {
   id: number
   domain: string
@@ -485,61 +480,6 @@ let addPage = (
   </div>
 )
 
-function AddPage(attrs: {}, context: DynamicContext) {
-  let user = getAuthUser(context)
-  if (!user) return <Redirect href="/login" />
-  return addPage
-}
-
-let submitParser = object({
-  title: string({ minLength: 3, maxLength: 50 }),
-  slug: string({ match: /^[\w-]{1,32}$/ }),
-})
-
-function Submit(attrs: {}, context: DynamicContext) {
-  try {
-    let user = getAuthUser(context)
-    if (!user) throw 'You must be logged in to submit ' + pageTitle
-    let body = getContextFormBody(context)
-    let input = submitParser.parse(body)
-    let id = items.push({
-      title: input.title,
-      slug: input.slug,
-    })
-    return <Redirect href={`/dns-query-domain/result?id=${id}`} />
-  } catch (error) {
-    throwIfInAPI(error, '#add-message', context)
-    return (
-      <Redirect
-        href={
-          '/dns-query-domain/result?' +
-          new URLSearchParams({ error: String(error) })
-        }
-      />
-    )
-  }
-}
-
-function SubmitResult(attrs: {}, context: DynamicContext) {
-  let params = new URLSearchParams(context.routerMatch?.search)
-  let error = params.get('error')
-  let id = params.get('id')
-  return (
-    <div>
-      {error ? (
-        renderError(error, context)
-      ) : (
-        <>
-          <p>Your submission is received (#{id}).</p>
-          <p>
-            Back to <Link href="/dns-query-domain">{pageTitle}</Link>
-          </p>
-        </>
-      )}
-    </div>
-  )
-}
-
 function Block(attrs: {}, context: DynamicContext) {
   return updateDomainState(context, 'block')
 }
@@ -608,24 +548,6 @@ let routes = {
     title: apiEndpointTitle,
     description: 'unblock a domain',
     node: <Unblock />,
-  },
-  '/dns-query-domain/add': {
-    title: title(addPageTitle),
-    description: 'TODO',
-    node: <AddPage />,
-    streaming: false,
-  },
-  '/dns-query-domain/add/submit': {
-    title: apiEndpointTitle,
-    description: 'TODO',
-    node: <Submit />,
-    streaming: false,
-  },
-  '/dns-query-domain/result': {
-    title: apiEndpointTitle,
-    description: 'TODO',
-    node: <SubmitResult />,
-    streaming: false,
   },
 } satisfies Routes
 
