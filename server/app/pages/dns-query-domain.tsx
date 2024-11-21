@@ -102,7 +102,19 @@ order by last_seen desc
 `)
 
 function DomainItem(row: DomainRow, now: number) {
-  let state = row.state || filterByPattern(row.domain)
+  let state: 'default' | 'block' | 'forward' | null = row.state
+  let label: string
+  if (state) {
+    label = state
+  } else {
+    state = filterByPattern(row.domain)
+    if (state) {
+      label = state + ' (pattern)'
+    } else {
+      state = 'default'
+      label = 'default'
+    }
+  }
   return (
     <tr data-id={row.id} data-state={state}>
       <td>
@@ -115,9 +127,7 @@ function DomainItem(row: DomainRow, now: number) {
           ) : null}
         </div>
       </td>
-      <td data-field="state">
-        {row.state || `default (${filterByPattern(row.domain)})`}
-      </td>
+      <td data-field="state">{label}</td>
       <td>{row.domain}</td>
       <td>{row.count}</td>
       <td>
@@ -194,21 +204,20 @@ function Stats(attrs: { params: URLSearchParams; state: ViewState }) {
   let { params } = attrs
   let rows = select_stats.all()
 
-  params.set('state', 'all')
-  let all_link = `/dns-query-domain?${params}`
-
-  let default_block_count = 0
-  let default_forward_count = 0
+  let default_count = 0
+  let pattern_block_count = 0
+  let pattern_forward_count = 0
   for (let domain of select_default_domain.all()) {
     let state = filterByPattern(domain)
-    if (state === 'block') default_block_count++
-    else if (state === 'forward') default_forward_count++
+    if (state === 'block') pattern_block_count++
+    else if (state === 'forward') pattern_forward_count++
+    else default_count++
   }
 
   let all_count =
     rows.reduce((a, b) => a + b.count, 0) +
-    default_block_count +
-    default_forward_count
+    pattern_block_count +
+    pattern_forward_count
 
   type Items = {
     label: string
@@ -222,14 +231,19 @@ function Stats(attrs: { params: URLSearchParams; state: ViewState }) {
       count: all_count,
     },
     {
-      label: 'default (block)',
+      label: 'default',
       state: 'default',
-      count: default_block_count,
+      count: default_count,
     },
     {
-      label: 'default (forward)',
+      label: 'block (pattern)',
       state: 'default',
-      count: default_forward_count,
+      count: pattern_block_count,
+    },
+    {
+      label: 'forward (pattern)',
+      state: 'default',
+      count: pattern_forward_count,
     },
     ...rows.map(row => ({
       label: row.state,

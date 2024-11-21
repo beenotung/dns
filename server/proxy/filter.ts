@@ -28,7 +28,7 @@ export function filterDomain(
   let domain_id: number
   if (domain) {
     domain_id = domain.id!
-    state = domain.state || filterByPattern(question.name)
+    state = domain.state || filterByPattern(question.name) || default_state
     domain.count!++
     domain.last_seen = now
   } else {
@@ -38,7 +38,7 @@ export function filterDomain(
       count: 1,
       last_seen: now,
     })
-    state = filterByPattern(question.name)
+    state = filterByPattern(question.name) || default_state
   }
 
   proxy.dns_request.push({
@@ -77,8 +77,8 @@ limit 1
   )
   .pluck()
 
-export function filterByPattern(domain: string): State {
-  return select_pattern.get({ domain }) || default_state
+export function filterByPattern(domain: string) {
+  return select_pattern.get({ domain }) || null
 }
 
 export function makeEmptyResponse(query: Packet) {
