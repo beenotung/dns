@@ -27,7 +27,7 @@ applyDefaultEnv()
 
 function applyDefaultEnv() {
   if (process.env.NODE_ENV === 'production') return
-  let PORT = process.env.PORT || env.PORT
+  let PORT = process.env.PORT || env.HTTP_PORT
   env.COOKIE_SECRET ||= process.env.COOKIE_SECRET || cwd()
   env.EMAIL_USER ||= process.env.EMAIL_USER || 'skip'
   env.EMAIL_PASSWORD ||= process.env.EMAIL_PASSWORD || 'skip'
